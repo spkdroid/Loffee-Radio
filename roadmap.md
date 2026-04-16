@@ -4,6 +4,41 @@ This roadmap starts from the current MVP foundation and breaks the next work int
 
 The goal is to move from a working prototype into a stable, polished, and differentiated iOS relaxation product.
 
+## Verified Status Snapshot
+
+Cross-checking the current repository against this roadmap shows the following status.
+
+### Confirmed In The Current Codebase
+
+- Xcode project and shared scheme exist under `ios/Loffee/Loffee.xcodeproj`
+- SwiftUI app entry, home screen, and saved mixes screen are wired together
+- layered ambient playback through `AVAudioEngine`
+- per-sound volume control
+- saved mixes
+- rename, duplicate, delete, and reload saved mixes
+- restore last playback session
+- pause, resume, and clear-all controls
+- starter preset mixes
+- sleep timer UI and timer logic
+- background audio entitlement declared in `Info.plist`
+- basic playback error surfacing for missing or unsupported assets
+- interruption and route-change handling for the audio session
+
+### Verified Gaps Still Blocking A Reliable Xcode Run
+
+- bundled audio is still only `.ogg`, which is not a dependable iOS playback format
+- there is no verified device or simulator test result in this repository
+- image resources are still loose PNG files rather than asset catalogs
+- there is no lock screen / Control Center playback integration yet
+- there is no Now Playing metadata support yet
+- accessibility work is still minimal
+
+### Phase Status Based On The Current Repository
+
+- Phase 1 is partially complete: transport controls, session restore, mix persistence, and basic error handling exist, but native iOS audio conversion and device validation are still unfinished
+- Phase 2 is partially complete: the app has a usable home flow, mixer panel, rename and duplicate flows, and empty states, but onboarding and broader UX polish are still incomplete
+- Phase 3 is not started in the areas that matter most: asset catalogs, app icons, Now Playing, lock screen controls, haptics, and accessibility polish are not yet implemented
+
 ## Current MVP Baseline
 
 The current MVP direction covers:
@@ -196,6 +231,6 @@ If the goal is fastest path to a credible first release, the order should be:
 
 ## Immediate Recommendation
 
-The best next improvement phase is now Phase 3.
+The best next improvement phase is to finish the remaining Phase 1 work before moving to Phase 3.
 
-The current iOS scaffold has already covered most of the code-only parts of Phase 1 and Phase 2 that fit inside this workspace. The next highest-value work is Apple-platform validation and polish: converting audio assets to iOS-native formats, testing route and interruption behavior on device, moving resources into asset catalogs, improving accessibility, and integrating system playback surfaces such as Now Playing and lock screen controls.
+The current iOS scaffold has covered much of the code-only part of the MVP, but the repo still lacks the most important execution prerequisite for dependable Apple-platform playback: converted iOS-native audio assets. The next highest-value work is to convert the bundled audio to `.m4a`, `.caf`, or `.wav`, then validate playback, looping, interruptions, background behavior, and mix restore on an actual iPhone or iPad. After that, Phase 3 polish work such as asset catalogs, accessibility, Now Playing, and lock screen controls becomes the right next step.

@@ -1,5 +1,7 @@
 import AVFoundation
 import Foundation
+import MediaPlayer
+import UIKit
 
 enum AudioEngineError: LocalizedError {
     case missingResource(String)
@@ -31,6 +33,10 @@ final class AudioEngineManager {
     private var playbackNodes: [String: PlaybackNode] = [:]
     private let supportedExtensions = ["m4a", "caf", "wav", "aif", "mp3", "ogg"]
     private(set) var isPaused = false
+    var onRemotePlayRequested: (() -> Void)?
+    var onRemotePauseRequested: (() -> Void)?
+    var onRemoteToggleRequested: (() -> Void)?
+    var onRemoteStopRequested: (() -> Void)?
 
     var isPlaying: Bool {
         !playbackNodes.isEmpty && !isPaused
@@ -43,6 +49,7 @@ final class AudioEngineManager {
     init() {
         configureSession()
         observeAudioSession()
+        configureRemoteCommands()
         engine.prepare()
     }
 
@@ -156,11 +163,30 @@ final class AudioEngineManager {
         playbackNode.player.volume = volume
     }
 
+    func updateNowPlayingInfo(title: String, subtitle: String, isPlaying: Bool, artworkName: String?) {
+        var nowPlayingInfo: [String: Any] = [
+            MPMediaItemPropertyTitle: title,
+            MPMediaItemPropertyArtist: subtitle,
+            MPNowPlayingInfoPropertyIsLiveStream: true,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
+        ]
+
+        if let artworkName, let artwork = loadArtwork(named: artworkName) {
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+
+    func clearNowPlayingInfo() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
     private func configureSession() {
         let session = AVAudioSession.sharedInstance()
 
         do {
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers, .allowAirPlay, .allowBluetoothA2DP])
             try session.setActive(true)
         } catch {
             assertionFailure("Audio session configuration failed: \(error.localizedDescription)")
@@ -181,6 +207,40 @@ final class AudioEngineManager {
             name: AVAudioSession.routeChangeNotification,
             object: nil
         )
+    }
+
+    private func configureRemoteCommands() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.pauseCommand.isEnabled = true
+        commandCenter.togglePlayPauseCommand.isEnabled = true
+        commandCenter.stopCommand.isEnabled = true
+
+        commandCenter.playCommand.removeTarget(nil)
+        commandCenter.pauseCommand.removeTarget(nil)
+        commandCenter.togglePlayPauseCommand.removeTarget(nil)
+        commandCenter.stopCommand.removeTarget(nil)
+
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            self?.onRemotePlayRequested?()
+            return .success
+        }
+
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            self?.onRemotePauseRequested?()
+            return .success
+        }
+
+        commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
+            self?.onRemoteToggleRequested?()
+            return .success
+        }
+
+        commandCenter.stopCommand.addTarget { [weak self] _ in
+            self?.onRemoteStopRequested?()
+            return .success
+        }
     }
 
     @objc private func handleInterruption(_ notification: Notification) {
@@ -217,6 +277,26 @@ final class AudioEngineManager {
         if reason == .oldDeviceUnavailable {
             pauseAll()
         }
+    }
+
+    private func loadArtwork(named name: String) -> MPMediaItemArtwork? {
+        guard let image = UIImage(named: name) ?? loadImageFromBundle(named: name) else {
+            return nil
+        }
+
+        return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+    }
+
+    private func loadImageFromBundle(named name: String) -> UIImage? {
+        if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Images") {
+            return UIImage(contentsOfFile: url.path)
+        }
+
+        if let url = Bundle.main.url(forResource: name, withExtension: "png") {
+            return UIImage(contentsOfFile: url.path)
+        }
+
+        return nil
     }
 
     private func resolveAudioURL(for baseName: String) throws -> URL {

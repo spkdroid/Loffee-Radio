@@ -5,6 +5,8 @@ struct BundlePNGImage: View {
     let name: String
     var contentMode: ContentMode = .fit
 
+    private static let cache = NSCache<NSString, UIImage>()
+
     var body: some View {
         if let image = Self.loadImage(named: name) {
             Image(uiImage: image)
@@ -21,12 +23,29 @@ struct BundlePNGImage: View {
     }
 
     private static func loadImage(named name: String) -> UIImage? {
+        if let cachedImage = cache.object(forKey: name as NSString) {
+            return cachedImage
+        }
+
+        if let assetImage = UIImage(named: name) {
+            cache.setObject(assetImage, forKey: name as NSString)
+            return assetImage
+        }
+
         if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Images") {
-            return UIImage(contentsOfFile: url.path)
+            let image = UIImage(contentsOfFile: url.path)
+            if let image {
+                cache.setObject(image, forKey: name as NSString)
+            }
+            return image
         }
 
         if let url = Bundle.main.url(forResource: name, withExtension: "png") {
-            return UIImage(contentsOfFile: url.path)
+            let image = UIImage(contentsOfFile: url.path)
+            if let image {
+                cache.setObject(image, forKey: name as NSString)
+            }
+            return image
         }
 
         return nil

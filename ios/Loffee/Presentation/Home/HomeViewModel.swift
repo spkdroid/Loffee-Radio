@@ -55,6 +55,7 @@ final class HomeViewModel: ObservableObject {
         self.mixStore = mixStore
         self.playbackSessionStore = playbackSessionStore
         self.sounds = Self.defaultSounds
+        configureRemoteControls()
         restoreSession()
     }
 
@@ -84,6 +85,40 @@ final class HomeViewModel: ObservableObject {
         }
 
         return isPaused ? "pause.circle.fill" : "play.circle.fill"
+    }
+
+    var miniPlayerTitle: String {
+        if let customMixName = trimmedMixName, !customMixName.isEmpty {
+            return customMixName
+        }
+
+        guard let firstSound = activeSounds.first else {
+            return "Build a calm scene"
+        }
+
+        if activeSounds.count == 1 {
+            return firstSound.name
+        }
+
+        return "\(firstSound.name) + \(activeSounds.count - 1) more"
+    }
+
+    var miniPlayerSubtitle: String {
+        if activeSounds.isEmpty {
+            return "Tap a sound tile or start from a preset mix"
+        }
+
+        let soundSummary = "\(activeSounds.count) sound\(activeSounds.count == 1 ? "" : "s") active"
+
+        guard sleepTimerOption != .off else {
+            return soundSummary
+        }
+
+        return "\(soundSummary) • Sleep timer: \(sleepTimerOption.title)"
+    }
+
+    var activeArtworkName: String {
+        activeSounds.first?.selectedArtworkName ?? "bg_main"
     }
 
     var starterMixes: [StarterMix] {
@@ -168,6 +203,7 @@ final class HomeViewModel: ObservableObject {
         audioEngineManager.stopAll()
         playbackSessionStore.clear()
         cancelSleepTimer()
+        mixName = ""
         syncPlaybackState()
     }
 
@@ -252,8 +288,46 @@ final class HomeViewModel: ObservableObject {
 
         if activeSounds.isEmpty {
             playbackSessionStore.clear()
+            audioEngineManager.clearNowPlayingInfo()
         } else {
             playbackSessionStore.persist(from: sounds)
+            audioEngineManager.updateNowPlayingInfo(
+                title: miniPlayerTitle,
+                subtitle: miniPlayerSubtitle,
+                isPlaying: isPlaying && !isPaused,
+                artworkName: activeArtworkName
+            )
+        }
+    }
+
+    private var trimmedMixName: String? {
+        let value = mixName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func configureRemoteControls() {
+        audioEngineManager.onRemotePlayRequested = { [weak self] in
+            Task { @MainActor in
+                self?.resumePlayback()
+            }
+        }
+
+        audioEngineManager.onRemotePauseRequested = { [weak self] in
+            Task { @MainActor in
+                self?.pausePlayback()
+            }
+        }
+
+        audioEngineManager.onRemoteToggleRequested = { [weak self] in
+            Task { @MainActor in
+                self?.togglePlayback()
+            }
+        }
+
+        audioEngineManager.onRemoteStopRequested = { [weak self] in
+            Task { @MainActor in
+                self?.clearAll()
+            }
         }
     }
 

@@ -32,6 +32,7 @@ struct LoffeeApp: App {
                         Label("My Mixes", systemImage: "square.stack.3d.up")
                     }
             }
+            .tint(Color("AccentColor"))
         }
     }
 }
