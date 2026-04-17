@@ -57,6 +57,7 @@ final class HomeViewModel: ObservableObject {
         self.sounds = Self.defaultSounds
         configureRemoteControls()
         restoreSession()
+        validateBundledAudioAssets()
     }
 
     var activeSounds: [Sound] {
@@ -192,7 +193,7 @@ final class HomeViewModel: ObservableObject {
 
         sounds[index].volume = volume
         audioEngineManager.setVolume(for: soundID, volume: volume)
-        playbackSessionStore.persist(from: sounds)
+        persistPlaybackSession()
     }
 
     func clearAll() {
@@ -290,7 +291,7 @@ final class HomeViewModel: ObservableObject {
             playbackSessionStore.clear()
             audioEngineManager.clearNowPlayingInfo()
         } else {
-            playbackSessionStore.persist(from: sounds)
+            persistPlaybackSession()
             audioEngineManager.updateNowPlayingInfo(
                 title: miniPlayerTitle,
                 subtitle: miniPlayerSubtitle,
@@ -332,10 +333,13 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func restoreSession() {
-        let persistedVolumes = playbackSessionStore.restore()
-        guard !persistedVolumes.isEmpty else {
+        guard let restoredSession = playbackSessionStore.restore(), !restoredSession.snapshots.isEmpty else {
             return
         }
+
+        let persistedVolumes = Dictionary(
+            uniqueKeysWithValues: restoredSession.snapshots.map { ($0.soundID, $0.volume) }
+        )
 
         for index in sounds.indices {
             guard let volume = persistedVolumes[sounds[index].id] else {
@@ -353,7 +357,28 @@ final class HomeViewModel: ObservableObject {
             }
         }
 
+        if !restoredSession.mixName.isEmpty {
+            mixName = restoredSession.mixName
+        }
+
+        if restoredSession.isPaused {
+            audioEngineManager.pauseAll()
+        }
+
         syncPlaybackState()
+    }
+
+    private func persistPlaybackSession() {
+        playbackSessionStore.persist(from: sounds, mixName: mixName, isPaused: audioEngineManager.isPaused)
+    }
+
+    private func validateBundledAudioAssets() {
+        let missingPreferredAssets = audioEngineManager.missingPreferredAssets(for: sounds.map(\.audioBaseName))
+        guard !missingPreferredAssets.isEmpty else {
+            return
+        }
+
+        errorMessage = "Native iOS audio files are still missing for: \(missingPreferredAssets.sorted().joined(separator: ", ")). Playback may work with bundled .ogg files, but reliable release builds should add .m4a, .caf, or .wav versions with the same base names."
     }
 
     private func cancelSleepTimer() {

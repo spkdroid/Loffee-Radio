@@ -30,7 +30,7 @@ This repository now contains:
 
 The project can now be opened in Xcode from `ios/Loffee/Loffee.xcodeproj`.
 
-One important constraint remains: the Android audio files are `.ogg`. They are copied into the iOS bundle and the audio engine will attempt to load them, but native iOS playback is most reliable with `.m4a`, `.caf`, or `.wav`. See `ios/Loffee/Resources/Project/AudioImportNotes.md`.
+The repository now includes native `.m4a` versions of the bundled ambient tracks alongside the original `.ogg` sources. The audio engine prefers the iOS-native files first and falls back to `.ogg` only if needed. The main remaining playback work is device validation in Xcode: loop seam checks, interruption behavior, route changes, and background playback confirmation. See `ios/Loffee/Resources/Project/AudioImportNotes.md`.
 
 ## iOS Source Structure
 

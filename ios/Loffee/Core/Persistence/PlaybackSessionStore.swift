@@ -1,7 +1,13 @@
 import Foundation
 
 final class PlaybackSessionStore {
-    private struct PlaybackSnapshot: Codable {
+    struct PlaybackSession: Codable {
+        let mixName: String
+        let isPaused: Bool
+        let snapshots: [PlaybackSnapshot]
+    }
+
+    struct PlaybackSnapshot: Codable {
         let soundID: String
         let volume: Float
     }
@@ -13,26 +19,35 @@ final class PlaybackSessionStore {
         self.userDefaults = userDefaults
     }
 
-    func restore() -> [String: Float] {
+    func restore() -> PlaybackSession? {
         guard let data = userDefaults.data(forKey: sessionKey) else {
-            return [:]
+            return nil
         }
 
         do {
-            let snapshots = try JSONDecoder().decode([PlaybackSnapshot].self, from: data)
-            return Dictionary(uniqueKeysWithValues: snapshots.map { ($0.soundID, $0.volume) })
+            return try JSONDecoder().decode(PlaybackSession.self, from: data)
         } catch {
-            return [:]
+            guard let snapshots = try? JSONDecoder().decode([PlaybackSnapshot].self, from: data) else {
+                return nil
+            }
+
+            return PlaybackSession(mixName: "", isPaused: false, snapshots: snapshots)
         }
     }
 
-    func persist(from sounds: [Sound]) {
+    func persist(from sounds: [Sound], mixName: String, isPaused: Bool) {
         let snapshots = sounds
             .filter(\.isSelected)
             .map { PlaybackSnapshot(soundID: $0.id, volume: $0.volume) }
 
+        let session = PlaybackSession(
+            mixName: mixName.trimmingCharacters(in: .whitespacesAndNewlines),
+            isPaused: isPaused,
+            snapshots: snapshots
+        )
+
         do {
-            let data = try JSONEncoder().encode(snapshots)
+            let data = try JSONEncoder().encode(session)
             userDefaults.set(data, forKey: sessionKey)
         } catch {
             userDefaults.removeObject(forKey: sessionKey)

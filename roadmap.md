@@ -23,21 +23,32 @@ Cross-checking the current repository against this roadmap shows the following s
 - background audio entitlement declared in `Info.plist`
 - basic playback error surfacing for missing or unsupported assets
 - interruption and route-change handling for the audio session
+- native `.m4a` audio assets are now bundled alongside the original `.ogg` source files
+- session restore now preserves paused state and mix name
+- persistent bottom mini-player / control bar
+- dedicated mixer sheet for active sounds
+- first-launch onboarding hints
+- searchable saved mixes screen with improved empty states
+- image resources moved into an asset catalog
+- app icon asset set and launch screen asset references
+- Now Playing metadata and lock screen / Control Center remote command hooks
+- haptic feedback on core interactions
+- adaptive layout improvements for larger iPhone and iPad widths
+- accessibility baseline improvements including clearer labels and values
+- image loading cache to reduce repeated decode work
 
 ### Verified Gaps Still Blocking A Reliable Xcode Run
 
-- bundled audio is still only `.ogg`, which is not a dependable iOS playback format
 - there is no verified device or simulator test result in this repository
-- image resources are still loose PNG files rather than asset catalogs
-- there is no lock screen / Control Center playback integration yet
-- there is no Now Playing metadata support yet
-- accessibility work is still minimal
+- loop seam validation still has to be done on converted iOS-native audio files
+- production-level visual asset refinement is still possible, but the asset catalog baseline now exists
 
 ### Phase Status Based On The Current Repository
 
-- Phase 1 is partially complete: transport controls, session restore, mix persistence, and basic error handling exist, but native iOS audio conversion and device validation are still unfinished
-- Phase 2 is partially complete: the app has a usable home flow, mixer panel, rename and duplicate flows, and empty states, but onboarding and broader UX polish are still incomplete
-- Phase 3 is not started in the areas that matter most: asset catalogs, app icons, Now Playing, lock screen controls, haptics, and accessibility polish are not yet implemented
+- Phase 1 is code-complete in the repository: native iOS audio assets are bundled, transport controls and restore behavior are implemented, and interruption/session handling has been hardened
+- Phase 1 still requires Apple-side validation before release: device playback checks, seamless loop review, and simulator / hardware verification are not yet captured in this repository
+- Phase 2 is complete in the repository: the app now has a bottom control bar, dedicated mixer panel, rename and duplicate flows, empty states, onboarding help, and stronger playback-state feedback
+- Phase 3 is complete in the repository for app-side implementation: asset catalogs, app icon and launch assets, Now Playing metadata, lock screen / Control Center command hooks, haptics, adaptive layout, and accessibility baseline work are now present
 
 ## Current MVP Baseline
 
@@ -231,6 +242,6 @@ If the goal is fastest path to a credible first release, the order should be:
 
 ## Immediate Recommendation
 
-The best next improvement phase is to finish the remaining Phase 1 work before moving to Phase 3.
+The best next improvement phase is release validation for the completed Phase 1, Phase 2, and Phase 3 repository work.
 
-The current iOS scaffold has covered much of the code-only part of the MVP, but the repo still lacks the most important execution prerequisite for dependable Apple-platform playback: converted iOS-native audio assets. The next highest-value work is to convert the bundled audio to `.m4a`, `.caf`, or `.wav`, then validate playback, looping, interruptions, background behavior, and mix restore on an actual iPhone or iPad. After that, Phase 3 polish work such as asset catalogs, accessibility, Now Playing, and lock screen controls becomes the right next step.
+The current iOS scaffold now includes the Phase 1, Phase 2, and Phase 3 implementation work that fits inside this repository. The next highest-value work is to open the project in Xcode on macOS and validate playback, looping, interruptions, background behavior, Now Playing behavior, and mix restore on an actual iPhone or iPad.

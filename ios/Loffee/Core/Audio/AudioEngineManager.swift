@@ -32,7 +32,9 @@ final class AudioEngineManager {
     private let engine = AVAudioEngine()
     private var playbackNodes: [String: PlaybackNode] = [:]
     private let supportedExtensions = ["m4a", "caf", "wav", "aif", "mp3", "ogg"]
+    private let preferredExtensions = ["m4a", "caf", "wav", "aif", "mp3"]
     private(set) var isPaused = false
+    private var shouldResumeAfterInterruption = false
     var onRemotePlayRequested: (() -> Void)?
     var onRemotePauseRequested: (() -> Void)?
     var onRemoteToggleRequested: (() -> Void)?
@@ -182,6 +184,10 @@ final class AudioEngineManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    func missingPreferredAssets(for baseNames: [String]) -> [String] {
+        baseNames.filter { preferredAudioURL(for: $0) == nil }
+    }
+
     private func configureSession() {
         let session = AVAudioSession.sharedInstance()
 
@@ -253,14 +259,24 @@ final class AudioEngineManager {
 
         switch type {
         case .began:
+            shouldResumeAfterInterruption = hasActiveNodes && !isPaused
             pauseAll()
         case .ended:
+            let optionsValue = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            let options = optionsValue.map(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+
+            guard shouldResumeAfterInterruption, options.contains(.shouldResume) else {
+                shouldResumeAfterInterruption = false
+                return
+            }
+
             do {
                 try AVAudioSession.sharedInstance().setActive(true)
                 try resumeAll()
             } catch {
                 break
             }
+            shouldResumeAfterInterruption = false
         @unknown default:
             break
         }
@@ -294,6 +310,20 @@ final class AudioEngineManager {
 
         if let url = Bundle.main.url(forResource: name, withExtension: "png") {
             return UIImage(contentsOfFile: url.path)
+        }
+
+        return nil
+    }
+
+    private func preferredAudioURL(for baseName: String) -> URL? {
+        for fileExtension in preferredExtensions {
+            if let url = Bundle.main.url(forResource: baseName, withExtension: fileExtension, subdirectory: "Audio") {
+                return url
+            }
+
+            if let url = Bundle.main.url(forResource: baseName, withExtension: fileExtension) {
+                return url
+            }
         }
 
         return nil
