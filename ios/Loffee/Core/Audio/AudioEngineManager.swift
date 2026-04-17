@@ -52,7 +52,6 @@ final class AudioEngineManager {
         configureSession()
         observeAudioSession()
         configureRemoteCommands()
-        engine.prepare()
     }
 
     deinit {
@@ -349,6 +348,15 @@ final class AudioEngineManager {
         }
 
         do {
+            // Ensure the audio session has an active route before the engine
+            // tries to resolve its I/O nodes (required on iOS 26+).
+            try AVAudioSession.sharedInstance().setActive(true)
+
+            // Reset so the engine re-negotiates its I/O nodes against the
+            // current audio route, then prepare before starting.
+            engine.reset()
+            engine.prepare()
+
             try engine.start()
         } catch {
             throw AudioEngineError.engineStartFailed(error.localizedDescription)
