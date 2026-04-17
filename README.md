@@ -29,6 +29,7 @@ This repository now contains:
 - saved mix management with load, rename, duplicate, and delete flows
 - a programmatically restyled visual set for the app backgrounds and sound tiles
 - an expanded bundled sound library with 18 selectable sounds
+- a yoga module with a guided pose flow, animated pose figure, daily logging, streak tracking, and milestone badges
 
 The project can now be opened in Xcode from `ios/Loffee/Loffee.xcodeproj`.
 
@@ -46,16 +47,21 @@ ios/
         AudioEngineManager.swift
       Persistence/
         MixStore.swift
+        YogaProgressStore.swift
     Domain/
       Models/
         Mix.swift
         Sound.swift
+        YogaPose.swift
     Presentation/
       Home/
         HomeView.swift
         HomeViewModel.swift
       Mixes/
         MixesView.swift
+      Yoga/
+        YogaView.swift
+        YogaViewModel.swift
 ```
 
 ## MVP Scope
@@ -70,6 +76,8 @@ ios/
 - rename and duplicate saved mixes
 - lightweight local persistence
 - background playback support
+- guided yoga sessions with automatic completion logging
+- streak tracking and lightweight milestone gamification
 
 ## End-to-End Flow Included
 
@@ -83,6 +91,7 @@ The current iOS scaffold now supports this MVP loop in code:
 6. rename, duplicate, delete, and reload saved mixes
 7. apply a starter mix or sleep timer from the home screen
 8. reopen the app and restore the last active playback selection
+9. open the Yoga tab and run a guided session with automatic daily progress logging
 
 ## Next Implementation Steps
 

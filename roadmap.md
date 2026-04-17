@@ -12,6 +12,7 @@ Cross-checking the current repository against this roadmap shows the following s
 
 - Xcode project and shared scheme exist under `ios/Loffee/Loffee.xcodeproj`
 - SwiftUI app entry, home screen, and saved mixes screen are wired together
+- a dedicated yoga tab is wired into the main app navigation
 - layered ambient playback through `AVAudioEngine`
 - per-sound volume control
 - saved mixes
@@ -36,6 +37,7 @@ Cross-checking the current repository against this roadmap shows the following s
 - adaptive layout improvements for larger iPhone and iPad widths
 - accessibility baseline improvements including clearer labels and values
 - image loading cache to reduce repeated decode work
+- guided yoga flow with programmatic pose animation, automatic completion logging, streak tracking, and milestone badges
 
 ### Verified Gaps Still Blocking A Reliable Xcode Run
 
@@ -150,7 +152,7 @@ Increase repeat usage and make the app more useful across different calming rout
 - add categories or tags for sounds and mixes
 - add quick-start suggestions based on recent usage
 - add richer sound library organization and artwork polish
-- add streak-free retention features that stay calm and non-gamified
+- add wellness routines such as yoga or breathing flows with optional streaks and light milestone systems
 
 ### Deliverables
 
