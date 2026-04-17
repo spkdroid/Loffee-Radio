@@ -5,6 +5,8 @@ final class YogaProgressStore: ObservableObject {
     struct YogaSessionLog: Identifiable, Codable, Equatable {
         let id: UUID
         let completedAt: Date
+        let styleID: String?
+        let styleName: String?
         let poseIDs: [String]
         let totalDuration: TimeInterval
     }
@@ -86,10 +88,22 @@ final class YogaProgressStore: ObservableObject {
         }
     }
 
-    func recordSession(poseIDs: [String], totalDuration: TimeInterval, completedAt: Date = Date()) -> YogaSessionLog {
+    var recentSessions: [YogaSessionLog] {
+        Array(sessionLogs.prefix(5))
+    }
+
+    func recordSession(
+        styleID: String,
+        styleName: String,
+        poseIDs: [String],
+        totalDuration: TimeInterval,
+        completedAt: Date = Date()
+    ) -> YogaSessionLog {
         let log = YogaSessionLog(
             id: UUID(),
             completedAt: completedAt,
+            styleID: styleID,
+            styleName: styleName,
             poseIDs: poseIDs,
             totalDuration: totalDuration
         )

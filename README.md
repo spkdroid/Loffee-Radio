@@ -29,7 +29,7 @@ This repository now contains:
 - saved mix management with load, rename, duplicate, and delete flows
 - a programmatically restyled visual set for the app backgrounds and sound tiles
 - an expanded bundled sound library with 18 selectable sounds
-- a yoga module with a guided pose flow, animated pose figure, daily logging, streak tracking, and milestone badges
+- a yoga module with researched styles, goal-based recommendations, an animated illustrated pose figure, daily logging, streak tracking, and milestone badges
 
 The project can now be opened in Xcode from `ios/Loffee/Loffee.xcodeproj`.
 

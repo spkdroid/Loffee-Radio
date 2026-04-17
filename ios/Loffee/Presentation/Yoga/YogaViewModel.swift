@@ -17,7 +17,8 @@ final class YogaViewModel: ObservableObject {
         let isUnlocked: Bool
     }
 
-    @Published private(set) var poses: [YogaPose]
+    @Published private(set) var styles: [YogaStyle]
+    @Published private(set) var selectedStyleID: String
     @Published private(set) var currentPoseIndex = 0
     @Published private(set) var secondsRemaining: Int
     @Published private(set) var sessionState: SessionState = .idle
@@ -27,18 +28,31 @@ final class YogaViewModel: ObservableObject {
 
     private var timer: Timer?
 
-    init(progressStore: YogaProgressStore, poses: [YogaPose] = YogaPose.dailyFlow) {
+    init(progressStore: YogaProgressStore, styles: [YogaStyle] = YogaStyle.catalog) {
         self.progressStore = progressStore
-        self.poses = poses
-        self.secondsRemaining = poses.first?.holdDuration ?? 0
+        self.styles = styles
+        self.selectedStyleID = styles.first?.id ?? ""
+        self.secondsRemaining = styles.first?.poses.first?.holdDuration ?? 0
     }
 
     deinit {
         timer?.invalidate()
     }
 
+    var selectedStyle: YogaStyle {
+        styles.first(where: { $0.id == selectedStyleID }) ?? styles[0]
+    }
+
+    var poses: [YogaPose] {
+        selectedStyle.poses
+    }
+
     var currentPose: YogaPose {
         poses[min(currentPoseIndex, max(poses.count - 1, 0))]
+    }
+
+    var goalGuide: [YogaGoalGuide] {
+        YogaGoalGuide.recommendations
     }
 
     var isRunning: Bool {
@@ -84,6 +98,10 @@ final class YogaViewModel: ObservableObject {
         progressStore.totalSessions * 25 + progressStore.currentStreak * 10 + progressStore.totalMinutes
     }
 
+    var completedStyleCount: Int {
+        Set(progressStore.sessionLogs.compactMap(\.styleID)).count
+    }
+
     var streakHeadline: String {
         if progressStore.currentStreak > 0 {
             return "\(progressStore.currentStreak)-day streak active"
@@ -94,6 +112,10 @@ final class YogaViewModel: ObservableObject {
         }
 
         return "Start today and set the first streak marker"
+    }
+
+    var selectedStyleHeadline: String {
+        "\(selectedStyle.name) is best for \(selectedStyle.bestFor.lowercased())."
     }
 
     var achievements: [Achievement] {
@@ -125,8 +147,28 @@ final class YogaViewModel: ObservableObject {
                 subtitle: "Log ten completed yoga sessions.",
                 systemImage: "medal.fill",
                 isUnlocked: progressStore.totalSessions >= 10
+            ),
+            Achievement(
+                id: "style-explorer",
+                title: "Style Explorer",
+                subtitle: "Complete sessions in three different yoga styles.",
+                systemImage: "square.grid.2x2.fill",
+                isUnlocked: completedStyleCount >= 3
             )
         ]
+    }
+
+    func selectStyle(_ style: YogaStyle) {
+        guard style.id != selectedStyleID else {
+            return
+        }
+
+        timer?.invalidate()
+        selectedStyleID = style.id
+        sessionState = .idle
+        currentPoseIndex = 0
+        secondsRemaining = style.poses.first?.holdDuration ?? 0
+        completedLog = nil
     }
 
     func handlePrimaryAction() {
@@ -144,7 +186,7 @@ final class YogaViewModel: ObservableObject {
         timer?.invalidate()
         sessionState = .idle
         currentPoseIndex = 0
-        secondsRemaining = poses.first?.holdDuration ?? 0
+        secondsRemaining = selectedStyle.poses.first?.holdDuration ?? 0
     }
 
     func skipPose() {
@@ -183,6 +225,8 @@ final class YogaViewModel: ObservableObject {
         sessionState = .completed
         secondsRemaining = 0
         completedLog = progressStore.recordSession(
+            styleID: selectedStyle.id,
+            styleName: selectedStyle.name,
             poseIDs: poses.map(\.id),
             totalDuration: TimeInterval(totalSessionDuration)
         )

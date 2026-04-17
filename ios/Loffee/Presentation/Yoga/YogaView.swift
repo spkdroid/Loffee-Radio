@@ -18,9 +18,12 @@ struct YogaView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         heroCard
+                        goalGuideCard
+                        styleLibraryCard
                         sessionStageCard
                         streakCard
                         routineCard
+                        recentSessionsCard
                         achievementsCard
                     }
                     .padding(.horizontal, 18)
@@ -49,11 +52,11 @@ struct YogaView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Daily Flow")
+                    Text("Yoga Styles")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
 
-                    Text("Start a guided pose sequence, log your session automatically, and build a steady streak.")
+                    Text("Choose a practice based on your goal, run a guided session, and let the app log your streak automatically.")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
                 }
@@ -73,18 +76,122 @@ struct YogaView: View {
             HStack(spacing: 12) {
                 statChip(title: "Today", value: "\(viewModel.progressStore.sessionsToday)")
                 statChip(title: "Streak", value: "\(viewModel.progressStore.currentStreak)d")
-                statChip(title: "Longest", value: "\(viewModel.progressStore.longestStreak)d")
+                statChip(title: "Styles", value: "\(viewModel.completedStyleCount)")
             }
 
-            Text(viewModel.streakHeadline)
+            Text(viewModel.selectedStyleHeadline)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color(red: 0.88, green: 0.94, blue: 0.86))
+
+            Text(viewModel.streakHeadline)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.72))
         }
         .padding(20)
         .background(Color.black.opacity(0.24))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var goalGuideCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Goal Guide")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+
+            Text("Style selection now follows the wellness goals you specified.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.76))
+
+            ForEach(viewModel.goalGuide) { item in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.goal)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text(item.styles)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color(red: 0.95, green: 0.91, blue: 0.74))
+                    Text(item.rationale)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+        }
+        .padding(20)
+        .background(Color.black.opacity(0.22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var styleLibraryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Practice Library")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+
+            Text("Each style card includes a short researched summary so the user can choose the right session intentionally.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.76))
+
+            LazyVGrid(columns: poseColumns, spacing: 12) {
+                ForEach(viewModel.styles) { style in
+                    Button {
+                        YogaHaptics.selection()
+                        viewModel.selectStyle(style)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(style.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.white)
+                                    Text(style.bestFor)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Color(red: 0.95, green: 0.91, blue: 0.74))
+                                }
+                                Spacer()
+                                Text(style.intensity)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.75))
+                            }
+
+                            Text(style.researchSummary)
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.74))
+                                .lineLimit(4)
+
+                            Text(style.practiceFeel)
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.58))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(Color.black.opacity(viewModel.selectedStyleID == style.id ? 0.34 : 0.18))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(viewModel.selectedStyleID == style.id ? Color(red: 0.77, green: 0.92, blue: 0.79) : Color.white.opacity(0.10), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color.black.opacity(0.22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
@@ -108,11 +215,11 @@ struct YogaView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.currentPose.name)
+                    Text(viewModel.selectedStyle.name)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.white)
 
-                    Text(viewModel.currentPose.focus)
+                    Text(viewModel.currentPose.name + " • " + viewModel.currentPose.focus)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.72))
                 }
@@ -128,9 +235,17 @@ struct YogaView: View {
                 .frame(height: horizontalSizeClass == .regular ? 340 : 280)
 
             VStack(alignment: .leading, spacing: 10) {
+                Text(viewModel.selectedStyle.researchSummary)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.72))
+
                 Text(viewModel.currentPose.cue)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.84))
+
+                Text(viewModel.selectedStyle.breathCue)
+                    .font(.caption)
+                    .foregroundStyle(Color(red: 0.82, green: 0.93, blue: 0.83))
 
                 ProgressView(value: viewModel.sessionProgress)
                     .tint(Color(red: 0.77, green: 0.92, blue: 0.79))
@@ -166,7 +281,7 @@ struct YogaView: View {
 
             if let completedLog = viewModel.completedLog {
                 Label(
-                    "Last session logged at \(completedLog.completedAt.formatted(date: .omitted, time: .shortened))",
+                    "\(completedLog.styleName ?? viewModel.selectedStyle.name) logged at \(completedLog.completedAt.formatted(date: .omitted, time: .shortened))",
                     systemImage: "checkmark.seal.fill"
                 )
                 .font(.subheadline)
@@ -226,9 +341,13 @@ struct YogaView: View {
 
     private var routineCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Pose Sequence")
+            Text("Selected Sequence")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.white)
+
+            Text(viewModel.selectedStyle.practiceFeel)
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.74))
 
             LazyVGrid(columns: poseColumns, spacing: 12) {
                 ForEach(Array(viewModel.poses.enumerated()), id: \.element.id) { index, pose in
@@ -258,6 +377,49 @@ struct YogaView: View {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(index == viewModel.currentPoseIndex ? Color(red: 0.77, green: 0.92, blue: 0.79) : Color.white.opacity(0.10), lineWidth: 1)
                     )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+            }
+        }
+        .padding(20)
+        .background(Color.black.opacity(0.22))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var recentSessionsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Recent Sessions")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+
+            if viewModel.progressStore.recentSessions.isEmpty {
+                Text("Finish any style once and the session history will appear here.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.72))
+            } else {
+                ForEach(viewModel.progressStore.recentSessions) { session in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(session.styleName ?? "Yoga Session")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text(session.completedAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.68))
+                        }
+
+                        Spacer()
+
+                        Text("\(Int(session.totalDuration / 60)) min")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color(red: 0.95, green: 0.91, blue: 0.74))
+                    }
+                    .padding(14)
+                    .background(Color.white.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             }
@@ -328,16 +490,19 @@ private struct YogaPoseFigureView: View {
     var body: some View {
         TimelineView(.animation) { context in
             let pulse = isAnimating ? CGFloat(sin(context.date.timeIntervalSinceReferenceDate * 2.1)) : 0
+            let breath = isAnimating ? CGFloat(sin(context.date.timeIntervalSinceReferenceDate * 1.35)) : 0
 
             Canvas { graphicsContext, size in
                 let minSide = min(size.width, size.height)
-                let lineWidth = minSide * 0.04
-                let headRadius = minSide * 0.08
+                let skinStroke = minSide * 0.115
+                let armStroke = minSide * 0.085
+                let legStroke = minSide * 0.095
+                let headRadius = minSide * 0.085
                 let upperLimb = minSide * 0.18
                 let lowerLimb = minSide * 0.16
-                let torsoLength = minSide * 0.22
+                let torsoLength = minSide * 0.24
                 let hip = CGPoint(x: size.width * 0.5, y: size.height * 0.68 + pulse * 2)
-                let shoulder = point(from: hip, length: torsoLength, angle: pose.figure.torsoAngle)
+                let shoulder = point(from: hip, length: torsoLength + breath * 3, angle: pose.figure.torsoAngle)
                 let headCenter = point(from: shoulder, length: headRadius * 1.35, angle: -90)
 
                 let leftElbow = point(from: shoulder, length: upperLimb, angle: pose.figure.leftUpperArmAngle)
@@ -348,6 +513,11 @@ private struct YogaPoseFigureView: View {
                 let leftFoot = point(from: leftKnee, length: lowerLimb, angle: pose.figure.leftLowerLegAngle)
                 let rightKnee = point(from: hip, length: upperLimb, angle: pose.figure.rightUpperLegAngle)
                 let rightFoot = point(from: rightKnee, length: lowerLimb, angle: pose.figure.rightLowerLegAngle)
+
+                let skin = Color(red: 0.98, green: 0.66, blue: 0.52)
+                let top = Color(red: 0.98, green: 0.90, blue: 0.80)
+                let shorts = Color(red: 0.25, green: 0.35, blue: 0.14)
+                let hair = Color(red: 0.10, green: 0.15, blue: 0.09)
 
                 let plateRect = CGRect(x: size.width * 0.08, y: size.height * 0.06, width: size.width * 0.84, height: size.height * 0.88)
                 graphicsContext.fill(
@@ -370,21 +540,33 @@ private struct YogaPoseFigureView: View {
                     )
                 )
 
-                drawSegment(from: shoulder, to: hip, width: lineWidth * 1.2, in: &graphicsContext)
-                drawSegment(from: shoulder, to: leftElbow, width: lineWidth, in: &graphicsContext)
-                drawSegment(from: leftElbow, to: leftHand, width: lineWidth * 0.9, in: &graphicsContext)
-                drawSegment(from: shoulder, to: rightElbow, width: lineWidth, in: &graphicsContext)
-                drawSegment(from: rightElbow, to: rightHand, width: lineWidth * 0.9, in: &graphicsContext)
-                drawSegment(from: hip, to: leftKnee, width: lineWidth * 1.1, in: &graphicsContext)
-                drawSegment(from: leftKnee, to: leftFoot, width: lineWidth, in: &graphicsContext)
-                drawSegment(from: hip, to: rightKnee, width: lineWidth * 1.1, in: &graphicsContext)
-                drawSegment(from: rightKnee, to: rightFoot, width: lineWidth, in: &graphicsContext)
+                drawLimb(from: shoulder, to: leftElbow, width: armStroke, color: skin, in: &graphicsContext)
+                drawLimb(from: leftElbow, to: leftHand, width: armStroke * 0.92, color: skin, in: &graphicsContext)
+                drawLimb(from: shoulder, to: rightElbow, width: armStroke, color: skin, in: &graphicsContext)
+                drawLimb(from: rightElbow, to: rightHand, width: armStroke * 0.92, color: skin, in: &graphicsContext)
+                drawLimb(from: hip, to: leftKnee, width: legStroke, color: skin, in: &graphicsContext)
+                drawLimb(from: leftKnee, to: leftFoot, width: legStroke * 0.96, color: skin, in: &graphicsContext)
+                drawLimb(from: hip, to: rightKnee, width: legStroke, color: skin, in: &graphicsContext)
+                drawLimb(from: rightKnee, to: rightFoot, width: legStroke * 0.96, color: skin, in: &graphicsContext)
+                drawLimb(from: shoulder, to: hip, width: skinStroke, color: skin, in: &graphicsContext)
 
-                for joint in [shoulder, hip, leftElbow, rightElbow, leftKnee, rightKnee] {
-                    graphicsContext.fill(Path(ellipseIn: CGRect(x: joint.x - lineWidth * 0.42, y: joint.y - lineWidth * 0.42, width: lineWidth * 0.84, height: lineWidth * 0.84)), with: .color(Color(red: 0.90, green: 0.98, blue: 0.88)))
-                }
+                drawLimb(from: shoulder, to: hip, width: skinStroke * 0.78, color: top, in: &graphicsContext)
+                drawLimb(from: hip, to: leftKnee, width: legStroke * 0.88, color: shorts, in: &graphicsContext)
+                drawLimb(from: hip, to: rightKnee, width: legStroke * 0.88, color: shorts, in: &graphicsContext)
 
-                graphicsContext.fill(Path(ellipseIn: CGRect(x: headCenter.x - headRadius, y: headCenter.y - headRadius, width: headRadius * 2, height: headRadius * 2)), with: .color(Color(red: 0.96, green: 0.99, blue: 0.93)))
+                let shortsOverlay = hipShiftedRect(center: hip, width: minSide * 0.20, height: minSide * 0.11)
+                graphicsContext.fill(Path(roundedRect: shortsOverlay, cornerRadius: minSide * 0.03), with: .color(shorts))
+
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: headCenter.x - headRadius, y: headCenter.y - headRadius, width: headRadius * 2, height: headRadius * 2)), with: .color(skin))
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: headCenter.x - headRadius * 0.95, y: headCenter.y - headRadius * 1.05, width: headRadius * 1.82, height: headRadius * 1.45)), with: .color(hair))
+
+                let ponytailRect = CGRect(x: headCenter.x - headRadius * 1.45, y: headCenter.y + headRadius * 0.1, width: headRadius * 1.0, height: headRadius * 2.1)
+                graphicsContext.fill(Path(roundedRect: ponytailRect, cornerRadius: headRadius * 0.6), with: .color(hair))
+
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: leftHand.x - armStroke * 0.20, y: leftHand.y - armStroke * 0.20, width: armStroke * 0.40, height: armStroke * 0.40)), with: .color(skin))
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: rightHand.x - armStroke * 0.20, y: rightHand.y - armStroke * 0.20, width: armStroke * 0.40, height: armStroke * 0.40)), with: .color(skin))
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: leftFoot.x - legStroke * 0.36, y: leftFoot.y - legStroke * 0.18, width: legStroke * 0.72, height: legStroke * 0.36)), with: .color(top))
+                graphicsContext.fill(Path(ellipseIn: CGRect(x: rightFoot.x - legStroke * 0.36, y: rightFoot.y - legStroke * 0.18, width: legStroke * 0.72, height: legStroke * 0.36)), with: .color(top))
             }
         }
         .background(Color.black.opacity(0.18))
@@ -403,11 +585,15 @@ private struct YogaPoseFigureView: View {
         )
     }
 
-    private func drawSegment(from start: CGPoint, to end: CGPoint, width: CGFloat, in context: inout GraphicsContext) {
+    private func drawLimb(from start: CGPoint, to end: CGPoint, width: CGFloat, color: Color, in context: inout GraphicsContext) {
         var path = Path()
         path.move(to: start)
         path.addLine(to: end)
-        context.stroke(path, with: .color(Color(red: 0.92, green: 0.99, blue: 0.90)), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+    }
+
+    private func hipShiftedRect(center: CGPoint, width: CGFloat, height: CGFloat) -> CGRect {
+        CGRect(x: center.x - width * 0.55, y: center.y - height * 0.36, width: width, height: height)
     }
 }
 
