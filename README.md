@@ -27,6 +27,8 @@ This repository now contains:
 - real layered playback through `AVAudioEngine`
 - session restore, pause and resume controls, starter mixes, and sleep timer support
 - saved mix management with load, rename, duplicate, and delete flows
+- a programmatically restyled visual set for the app backgrounds and sound tiles
+- an expanded bundled sound library with 18 selectable sounds
 
 The project can now be opened in Xcode from `ios/Loffee/Loffee.xcodeproj`.
 
