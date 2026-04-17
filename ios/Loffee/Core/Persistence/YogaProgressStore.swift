@@ -7,6 +7,9 @@ final class YogaProgressStore: ObservableObject {
         let completedAt: Date
         let styleID: String?
         let styleName: String?
+        let routineID: String?
+        let routineName: String?
+        let routineLevel: String?
         let poseIDs: [String]
         let totalDuration: TimeInterval
     }
@@ -95,6 +98,9 @@ final class YogaProgressStore: ObservableObject {
     func recordSession(
         styleID: String,
         styleName: String,
+        routineID: String,
+        routineName: String,
+        routineLevel: String,
         poseIDs: [String],
         totalDuration: TimeInterval,
         completedAt: Date = Date()
@@ -104,6 +110,9 @@ final class YogaProgressStore: ObservableObject {
             completedAt: completedAt,
             styleID: styleID,
             styleName: styleName,
+            routineID: routineID,
+            routineName: routineName,
+            routineLevel: routineLevel,
             poseIDs: poseIDs,
             totalDuration: totalDuration
         )

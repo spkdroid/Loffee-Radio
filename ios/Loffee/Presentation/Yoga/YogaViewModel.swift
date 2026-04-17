@@ -19,20 +19,26 @@ final class YogaViewModel: ObservableObject {
 
     @Published private(set) var styles: [YogaStyle]
     @Published private(set) var selectedStyleID: String
-    @Published private(set) var currentPoseIndex = 0
+    @Published private(set) var selectedRoutineID: String
+    @Published private(set) var currentStepIndex = 0
     @Published private(set) var secondsRemaining: Int
     @Published private(set) var sessionState: SessionState = .idle
     @Published private(set) var completedLog: YogaProgressStore.YogaSessionLog?
+    @Published var voiceGuidanceEnabled = true
+    @Published var transitionCueEnabled = true
+    @Published private(set) var latestGuidanceText = "Voice guidance ready."
 
     let progressStore: YogaProgressStore
 
     private var timer: Timer?
+    private let guidanceService = YogaGuidanceService()
 
     init(progressStore: YogaProgressStore, styles: [YogaStyle] = YogaStyle.catalog) {
         self.progressStore = progressStore
         self.styles = styles
         self.selectedStyleID = styles.first?.id ?? ""
-        self.secondsRemaining = styles.first?.poses.first?.holdDuration ?? 0
+        self.selectedRoutineID = styles.first?.defaultRoutine.id ?? ""
+        self.secondsRemaining = styles.first?.defaultRoutine.steps.first?.holdDuration ?? 0
     }
 
     deinit {
@@ -43,12 +49,24 @@ final class YogaViewModel: ObservableObject {
         styles.first(where: { $0.id == selectedStyleID }) ?? styles[0]
     }
 
+    var selectedRoutine: YogaRoutine {
+        selectedStyle.routines.first(where: { $0.id == selectedRoutineID }) ?? selectedStyle.defaultRoutine
+    }
+
+    var steps: [YogaRoutineStep] {
+        selectedRoutine.steps
+    }
+
     var poses: [YogaPose] {
-        selectedStyle.poses
+        steps.map(\.pose)
+    }
+
+    var currentStep: YogaRoutineStep {
+        steps[min(currentStepIndex, max(steps.count - 1, 0))]
     }
 
     var currentPose: YogaPose {
-        poses[min(currentPoseIndex, max(poses.count - 1, 0))]
+        currentStep.pose
     }
 
     var goalGuide: [YogaGoalGuide] {
@@ -60,7 +78,7 @@ final class YogaViewModel: ObservableObject {
     }
 
     var canStart: Bool {
-        !poses.isEmpty
+        !steps.isEmpty
     }
 
     var primaryActionTitle: String {
@@ -85,13 +103,13 @@ final class YogaViewModel: ObservableObject {
     }
 
     var elapsedDuration: Int {
-        let completedPoseDuration = poses.prefix(currentPoseIndex).reduce(0) { $0 + $1.holdDuration }
-        let currentElapsed = max(currentPose.holdDuration - secondsRemaining, 0)
-        return completedPoseDuration + currentElapsed
+        let completedStepDuration = steps.prefix(currentStepIndex).reduce(0) { $0 + $1.holdDuration }
+        let currentElapsed = max(currentStep.holdDuration - secondsRemaining, 0)
+        return completedStepDuration + currentElapsed
     }
 
     var totalSessionDuration: Int {
-        poses.reduce(0) { $0 + $1.holdDuration }
+        steps.reduce(0) { $0 + $1.holdDuration }
     }
 
     var energyPoints: Int {
@@ -100,6 +118,10 @@ final class YogaViewModel: ObservableObject {
 
     var completedStyleCount: Int {
         Set(progressStore.sessionLogs.compactMap(\.styleID)).count
+    }
+
+    var advancedCompletionCount: Int {
+        progressStore.sessionLogs.filter { $0.routineLevel == YogaRoutineLevel.advanced.rawValue }.count
     }
 
     var streakHeadline: String {
@@ -115,7 +137,11 @@ final class YogaViewModel: ObservableObject {
     }
 
     var selectedStyleHeadline: String {
-        "\(selectedStyle.name) is best for \(selectedStyle.bestFor.lowercased())."
+        "\(selectedRoutine.level.title) \(selectedStyle.name) is best for \(selectedStyle.bestFor.lowercased())."
+    }
+
+    var routineHeadline: String {
+        "\(selectedRoutine.title) • \(selectedRoutine.estimatedMinutes) min"
     }
 
     var achievements: [Achievement] {
@@ -154,6 +180,13 @@ final class YogaViewModel: ObservableObject {
                 subtitle: "Complete sessions in three different yoga styles.",
                 systemImage: "square.grid.2x2.fill",
                 isUnlocked: completedStyleCount >= 3
+            ),
+            Achievement(
+                id: "advanced-finish",
+                title: "Advanced Focus",
+                subtitle: "Finish any advanced yoga routine.",
+                systemImage: "bolt.heart.fill",
+                isUnlocked: advancedCompletionCount >= 1
             )
         ]
     }
@@ -164,11 +197,29 @@ final class YogaViewModel: ObservableObject {
         }
 
         timer?.invalidate()
+        guidanceService.stop()
         selectedStyleID = style.id
+        selectedRoutineID = style.defaultRoutine.id
         sessionState = .idle
-        currentPoseIndex = 0
-        secondsRemaining = style.poses.first?.holdDuration ?? 0
+        currentStepIndex = 0
+        secondsRemaining = style.defaultRoutine.steps.first?.holdDuration ?? 0
         completedLog = nil
+        latestGuidanceText = "Selected \(style.name)."
+    }
+
+    func selectRoutine(_ routine: YogaRoutine) {
+        guard routine.id != selectedRoutineID else {
+            return
+        }
+
+        timer?.invalidate()
+        guidanceService.stop()
+        selectedRoutineID = routine.id
+        sessionState = .idle
+        currentStepIndex = 0
+        secondsRemaining = routine.steps.first?.holdDuration ?? 0
+        completedLog = nil
+        latestGuidanceText = "Loaded \(routine.title)."
     }
 
     func handlePrimaryAction() {
@@ -184,19 +235,20 @@ final class YogaViewModel: ObservableObject {
 
     func resetSession() {
         timer?.invalidate()
+        guidanceService.stop()
         sessionState = .idle
-        currentPoseIndex = 0
-        secondsRemaining = selectedStyle.poses.first?.holdDuration ?? 0
+        currentStepIndex = 0
+        secondsRemaining = selectedRoutine.steps.first?.holdDuration ?? 0
+        latestGuidanceText = "Session reset."
     }
 
     func skipPose() {
-        guard currentPoseIndex < poses.count - 1 else {
+        guard currentStepIndex < steps.count - 1 else {
             completeSession()
             return
         }
 
-        currentPoseIndex += 1
-        secondsRemaining = currentPose.holdDuration
+        transitionToStep(currentStepIndex + 1, source: "Skipping to")
     }
 
     private func startSession(reset: Bool) {
@@ -205,31 +257,45 @@ final class YogaViewModel: ObservableObject {
         }
 
         if reset {
-            currentPoseIndex = 0
-            secondsRemaining = currentPose.holdDuration
+            currentStepIndex = 0
+            secondsRemaining = currentStep.holdDuration
         } else if secondsRemaining == 0 {
-            secondsRemaining = currentPose.holdDuration
+            secondsRemaining = currentStep.holdDuration
         }
 
         sessionState = .running
         startTimer()
+        announceCurrentStep(prefix: reset ? "Starting" : "Resuming")
     }
 
     private func pauseSession() {
         timer?.invalidate()
+        guidanceService.stop()
         sessionState = .paused
+        latestGuidanceText = "Session paused."
     }
 
     private func completeSession() {
         timer?.invalidate()
+        if transitionCueEnabled {
+            guidanceService.playTransitionCue()
+        }
         sessionState = .completed
         secondsRemaining = 0
         completedLog = progressStore.recordSession(
             styleID: selectedStyle.id,
             styleName: selectedStyle.name,
-            poseIDs: poses.map(\.id),
+            routineID: selectedRoutine.id,
+            routineName: selectedRoutine.title,
+            routineLevel: selectedRoutine.level.rawValue,
+            poseIDs: steps.map { $0.pose.id },
             totalDuration: TimeInterval(totalSessionDuration)
         )
+        latestGuidanceText = "Completed \(selectedRoutine.title)."
+
+        if voiceGuidanceEnabled {
+            guidanceService.speak("Session complete. Great work finishing \(selectedRoutine.title).")
+        }
     }
 
     private func startTimer() {
@@ -251,12 +317,31 @@ final class YogaViewModel: ObservableObject {
         }
 
         if secondsRemaining == 0 {
-            if currentPoseIndex < poses.count - 1 {
-                currentPoseIndex += 1
-                secondsRemaining = currentPose.holdDuration
+            if currentStepIndex < steps.count - 1 {
+                transitionToStep(currentStepIndex + 1, source: "Next")
             } else {
                 completeSession()
             }
+        }
+    }
+
+    private func transitionToStep(_ index: Int, source: String) {
+        currentStepIndex = index
+        secondsRemaining = currentStep.holdDuration
+
+        if transitionCueEnabled {
+            guidanceService.playTransitionCue()
+        }
+
+        announceCurrentStep(prefix: source)
+    }
+
+    private func announceCurrentStep(prefix: String) {
+        let prompt = currentStep.spokenPrompt ?? currentPose.cue
+        latestGuidanceText = "\(prefix) \(currentPose.name). \(prompt)"
+
+        if voiceGuidanceEnabled {
+            guidanceService.speak(latestGuidanceText)
         }
     }
 }
